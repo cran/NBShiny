@@ -1,0 +1,501 @@
+---
+title: "Naive Bayes Classification"
+output: html_document
+runtime: shiny
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(caret)
+library(e1071)
+library(rhandsontable)
+library(datasets)
+
+```
+
+```{r,echo=FALSE}
+sidebarPanel(
+   
+   downloadButton("downloaddata", "Download Example Data(Titanic)"),
+   checkboxInput("ex","Uncheck for using your own file",value = TRUE),
+  fileInput("file", "Upload the *.csv file with headers"),
+  sliderInput("train_num", label = "Enter the proportion of training dataset:",
+                     min = 0.6, max = 1, value = 0.6, step = 0.01),
+  #sliderInput("cut_offprob", label = "Enter cutoff probability",
+  #                   min = 0, max = 1, value = 0.5, step = 0.01),
+  uiOutput("vx"),
+  uiOutput("vy"),
+ # tableOutput("convertd"),
+  uiOutput("vxi"),
+  downloadButton("downloadPlot", "Download Plot")
+  
+)
+mainPanel(
+   tabsetPanel(type = "tab",
+                tabPanel("Model Summary", verbatimTextOutput("AD") ),
+                tabPanel("Model Visualization", plotOutput("MV") ),
+                tabPanel("Model Evaluation", verbatimTextOutput("ME") ),
+                tabPanel("Model Deployment",verbatimTextOutput("MD"))
+                ),
+    h6("Edit the test data record"),
+   rHandsontableOutput("testdata"),
+   h6("", tags$img(src ="K.JPG", height= 400, width=400))
+)
+output$AD<-renderPrint({
+      if(input$ex == TRUE)
+     {
+        
+data("Titanic")
+dataset = data.frame(Titanic)
+dataset =  dataset[rep(seq_len(nrow(dataset)), dataset$Freq) ,1:4  ]
+row.names(dataset) = 1:nrow(dataset)
+set.seed(1)
+index =  runif(nrow(dataset))
+dataset = dataset[order(index),]
+data = dataset
+      
+      }
+     
+  else{
+    file1 = input$file
+    if(is.null(file1)){return()}
+     
+    data =  read.table(file =  file1$datapath,sep =",",header = TRUE)
+ if(is.null(data())){return()}
+    }
+   
+  ds  =data   
+  
+     
+     
+     
+     
+     
+     
+     
+    ds = select(ds,input$variablex)
+    mod = paste(input$variabley,"~.")
+     
+     
+     
+    options(scipen = 999)
+     prop = input$train_num
+     set.seed(1)
+     dataframe =  ds
+     train.rows = sample(row.names(dataframe),dim(dataframe)[1]*prop)
+      dataframet = dataframe[train.rows,]
+      valid.rows = setdiff(row.names(dataframe),train.rows)
+      dataframev = dataframe[valid.rows,]    
+ 
+   model = naiveBayes(formula = as.formula(mod),data = dataframet)
+    print(model)
+      
+
+     
+}) 
+
+
+output$MV<-renderPlot({
+ if(input$ex == TRUE)
+     {
+        data("Titanic")
+dataset = data.frame(Titanic)
+dataset =  dataset[rep(seq_len(nrow(dataset)), dataset$Freq) ,1:4  ]
+row.names(dataset) = 1:nrow(dataset)
+set.seed(1)
+index =  runif(nrow(dataset))
+dataset = dataset[order(index),]
+data = dataset
+      
+      }
+     else{
+ file1 = input$file
+   if(is.null(file1)){return()}
+     
+    data =  read.table(file =  file1$datapath,sep =",",header = TRUE)
+    if(is.null(data())){return()}
+     }
+     ds = data
+     
+     ds = select(ds,input$variablex)
+     
+     
+     
+     options(scipen = 999)
+       prop = input$train_num
+       set.seed(1)
+       dataframe =  ds
+       train.rows = sample(row.names(dataframe),dim(dataframe)[1]*prop)
+       dataframet = dataframe[train.rows,]
+       valid.rows = setdiff(row.names(dataframe),train.rows)
+       dataframev = dataframe[valid.rows,]    
+ 
+       attach(dataframet)
+      
+      
+         assocplot(table(get(input$variablexi),get(input$variabley)),col = c("green","red"),xlab = input$variablexi, ylab = input$variabley)
+         
+        
+       
+       
+
+     
+     
+})
+output$ME<-renderPrint({
+  if(input$ex == TRUE)
+     {
+       data("Titanic")
+dataset = data.frame(Titanic)
+dataset =  dataset[rep(seq_len(nrow(dataset)), dataset$Freq) ,1:4  ]
+row.names(dataset) = 1:nrow(dataset)
+set.seed(1)
+index =  runif(nrow(dataset))
+dataset = dataset[order(index),]
+data = dataset
+      }
+     else{
+ file1 = input$file
+   if(is.null(file1)){return()}
+     
+    data =  read.table(file =  file1$datapath,sep =",",header = TRUE)
+    if(is.null(data())){return()}
+     }
+     ds = data
+     
+     ds = select(ds,input$variablex)
+     mod = paste(input$variabley,"~.")
+    
+     options(scipen = 999)
+       prop = input$train_num
+       set.seed(1)
+       dataframe =  ds
+       train.rows = sample(row.names(dataframe),dim(dataframe)[1]*prop)
+       dataframet = dataframe[train.rows,]
+       valid.rows = setdiff(row.names(dataframe),train.rows)
+       dataframev = dataframe[valid.rows,]    
+ model = naiveBayes(formula = as.formula(mod),data = dataframet)
+        if(prop <1 )
+     {   cat(sprintf("\nValidation data is used\n"))
+        prediction =  predict(model,newdata = dataframev)
+       attach(dataframev)
+       }
+       else
+       {
+         cat(sprintf("\nTraining data is used\n"))
+         prediction =  predict(model,newdata = dataframet)
+       attach(dataframet)
+       }
+       
+       
+       
+       
+   
+      print(confusionMatrix(as.factor(prediction),as.factor(get(input$variabley))))
+     
+   
+
+     
+     
+})
+output$MD<-renderPrint({
+  if(input$ex == TRUE)
+     {
+        data("Titanic")
+dataset = data.frame(Titanic)
+dataset =  dataset[rep(seq_len(nrow(dataset)), dataset$Freq) ,1:4  ]
+row.names(dataset) = 1:nrow(dataset)
+set.seed(1)
+index =  runif(nrow(dataset))
+dataset = dataset[order(index),]
+data = dataset
+      
+      }
+     else{
+ file1 = input$file
+   if(is.null(file1)){return()}
+     
+    data =  read.table(file =  file1$datapath,sep =",",header = TRUE)
+    if(is.null(data())){return()}
+     }
+     ds = data
+     
+     ds = select(ds,input$variablex)
+     mod = paste(input$variabley,"~.")
+      
+     options(scipen = 999)
+       prop = input$train_num
+       set.seed(1)
+       dataframe =  ds
+       train.rows = sample(row.names(dataframe),dim(dataframe)[1]*prop)
+       dataframet = dataframe[train.rows,]
+       valid.rows = setdiff(row.names(dataframe),train.rows)
+       dataframev = dataframe[valid.rows,]    
+ 
+       model = naiveBayes(formula = as.formula(mod),data = dataframet)
+  
+       test_data = data.frame(hot_to_r(input$testdata))
+       prediction =  predict(model,newdata = test_data)
+       test_data$predictedvalue = prediction
+       print(test_data)
+      
+     
+   
+
+     
+     
+})
+
+output$vx <- renderUI({
+   
+
+     
+     if(input$ex == TRUE)
+     {
+        data("Titanic")
+dataset = data.frame(Titanic)
+dataset =  dataset[rep(seq_len(nrow(dataset)), dataset$Freq) ,1:4  ]
+row.names(dataset) = 1:nrow(dataset)
+set.seed(1)
+index =  runif(nrow(dataset))
+dataset = dataset[order(index),]
+data = dataset
+      
+      }
+     else{
+ file1 = input$file
+   if(is.null(file1)){return()}
+     
+    data =  read.table(file =  file1$datapath,sep =",",header = TRUE)
+    if(is.null(data())){return()}
+     }
+    
+    data =  select_if(data,is.factor)
+     
+    checkboxGroupInput("variablex","Select the variables",choices = colnames(data),selected = colnames(data))
+    
+    
+  
+
+
+  })
+
+output$vxi <- renderUI({
+   
+
+     
+     if(input$ex == TRUE)
+     {
+       data("Titanic")
+dataset = data.frame(Titanic)
+dataset =  dataset[rep(seq_len(nrow(dataset)), dataset$Freq) ,1:4  ]
+row.names(dataset) = 1:nrow(dataset)
+set.seed(1)
+index =  runif(nrow(dataset))
+dataset = dataset[order(index),]
+data = dataset
+      
+      }
+     else{
+ file1 = input$file
+   if(is.null(file1)){return()}
+     
+    data =  read.table(file =  file1$datapath,sep =",",header = TRUE)
+    if(is.null(data())){return()}
+     }
+    
+    ds = data
+    ds = select(ds,input$variablex)
+    ds = select(ds,c(-input$variabley))
+     
+    selectInput("variablexi","Select the variable x for the plot",choices = colnames(ds),selected = "")
+    
+    
+  
+
+
+  })
+output$vy <- renderUI({
+   
+
+     
+    if(input$ex == TRUE)
+     {
+       data("Titanic")
+dataset = data.frame(Titanic)
+dataset =  dataset[rep(seq_len(nrow(dataset)), dataset$Freq) ,1:4  ]
+row.names(dataset) = 1:nrow(dataset)
+set.seed(1)
+index =  runif(nrow(dataset))
+dataset = dataset[order(index),]
+data = dataset
+      }
+     else{
+ file1 = input$file
+   if(is.null(file1)){return()}
+     
+    data =  read.table(file =  file1$datapath,sep =",",header = TRUE)
+    if(is.null(data())){return()}
+     }
+    ds = data
+    ds = select(ds,input$variablex) 
+    ds = select_if(ds,is.factor)
+   
+    
+    
+    
+    selectInput("variabley","Select the dependent variable",choices = colnames(ds) ,selected = "")
+
+
+  })
+
+output$testdata <- renderRHandsontable({
+   
+
+     
+    if(input$ex == TRUE)
+     {
+       data("Titanic")
+dataset = data.frame(Titanic)
+dataset =  dataset[rep(seq_len(nrow(dataset)), dataset$Freq) ,1:4  ]
+row.names(dataset) = 1:nrow(dataset)
+set.seed(1)
+index =  runif(nrow(dataset))
+dataset = dataset[order(index),]
+data = dataset
+      }
+     else{
+ file1 = input$file
+   if(is.null(file1)){return()}
+     
+    data =  read.table(file =  file1$datapath,sep =",",header = TRUE)
+    if(is.null(data())){return()}
+     }
+    
+    ds = data
+    ds = select(ds,input$variablex) 
+   ds = select(ds,c(-input$variabley))
+   row.names(ds)= 1:NROW(ds)
+   rhandsontable(data.frame(ds[1,]))
+   
+
+  })
+
+output$convertd <- renderTable({
+   
+
+     
+    if(input$ex == TRUE)
+     {
+       data("Titanic")
+dataset = data.frame(Titanic)
+dataset =  dataset[rep(seq_len(nrow(dataset)), dataset$Freq) ,1:4  ]
+row.names(dataset) = 1:nrow(dataset)
+set.seed(1)
+index =  runif(nrow(dataset))
+dataset = dataset[order(index),]
+data = dataset
+      
+      }
+     else{
+ file1 = input$file
+   if(is.null(file1)){return()}
+     
+    data =  read.table(file =  file1$datapath,sep =",",header = TRUE)
+    if(is.null(data())){return()}
+     }
+    
+    ds = data
+    
+   ds = select(ds,c(input$variabley))
+   
+   df =  ds
+   ds = model.matrix(~0 + get(input$variabley),data = ds)
+   
+   dnew = data.frame(cbind(df,ds))
+   
+   df = data.frame(dcat =unique(dnew))
+  
+  row.names(df)= 1:NROW(df)
+  df[,3]= NULL
+  colnames(df)=c("ActualValues","BinaryValues")
+   
+   print(data.frame(df))
+   
+
+  })
+
+output$downloadPlot<- downloadHandler(
+    filename = function() {
+      paste("NB_Associationplot", ".png", sep = "")
+    },
+    content = function(file) {
+      png(file)
+if(input$ex == TRUE)
+     {
+        data("Titanic")
+dataset = data.frame(Titanic)
+dataset =  dataset[rep(seq_len(nrow(dataset)), dataset$Freq) ,1:4  ]
+row.names(dataset) = 1:nrow(dataset)
+set.seed(1)
+index =  runif(nrow(dataset))
+dataset = dataset[order(index),]
+data = dataset
+      
+      }
+     else{
+ file1 = input$file
+   if(is.null(file1)){return()}
+     
+    data =  read.table(file =  file1$datapath,sep =",",header = TRUE)
+    if(is.null(data())){return()}
+     }
+     ds = data
+     
+     ds = select(ds,input$variablex)
+     
+     
+     
+     options(scipen = 999)
+       prop = input$train_num
+       set.seed(1)
+       dataframe =  ds
+       train.rows = sample(row.names(dataframe),dim(dataframe)[1]*prop)
+       dataframet = dataframe[train.rows,]
+       valid.rows = setdiff(row.names(dataframe),train.rows)
+       dataframev = dataframe[valid.rows,]    
+ 
+       attach(dataframet)
+      
+      
+         assocplot(table(get(input$variablexi),get(input$variabley)),col = c("green","red"),xlab = input$variablexi, ylab = input$variabley)
+         
+     
+      dev.off()
+    })
+
+
+
+
+datasetInput <- reactive({
+      data("Titanic")
+dataset = data.frame(Titanic)
+dataset =  dataset[rep(seq_len(nrow(dataset)), dataset$Freq) ,1:4  ]
+row.names(dataset) = 1:nrow(dataset)
+set.seed(1)
+index =  runif(nrow(dataset))
+dataset = dataset[order(index),]
+data = dataset
+})
+output$downloaddata <- downloadHandler(
+    filename = function() {
+      filetitle = paste("Exampledataset_Titanic")
+      paste(filetitle, ".csv", sep = "")
+    },
+    content = function(file) {
+      
+      write.csv(datasetInput(), file, row.names = FALSE)
+    }
+  )
